@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bjhd8778brnsc"
+path="res://.godot/imported/Default.obj-603de451a36d9e2d7436b483f88cc402.mesh"
+
+[deps]
+
+files=["res://.godot/imported/Default.obj-603de451a36d9e2d7436b483f88cc402.mesh"]
+
+source_file="res://Assets/SmokeStackers/Default.obj"
+dest_files=["res://.godot/imported/Default.obj-603de451a36d9e2d7436b483f88cc402.mesh", "res://.godot/imported/Default.obj-603de451a36d9e2d7436b483f88cc402.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
