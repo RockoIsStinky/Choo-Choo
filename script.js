@@ -9,6 +9,7 @@ import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUnifo
 import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js";
 import { ThreeMFLoader } from "three/examples/jsm/Addons.js";
 
+import { bayerdither } from "./bayerdither";
 let isMouseDown = false;
 let isDragging = false;
 
@@ -27,8 +28,8 @@ let lastMoveTime = 0;
 
 const mouse = new THREE.Vector2();
 
-const pxWidth = 280;
-const pxHeight = 210;
+const pxWidth = 400;
+const pxHeight = 300;
 const aspect = pxWidth / pxHeight;
 
 let size = 5;
@@ -84,6 +85,7 @@ composer.addPass(bloomity);
 
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
+composer.addPass(bayerdither(pxWidth, pxHeight, 1, 1.0, 5.0));
 
 camPiv.add(camera);
 
@@ -96,7 +98,7 @@ document.body.appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x9a9e85, 1.4);
 editor.add(ambientLight);
 
-const rectLight = new THREE.RectAreaLight(0xb2c797, 6.5, 5, 5);
+const rectLight = new THREE.RectAreaLight(0xb2c797, 30, 5, 5);
 rectLight.position.set(5, 10, -5);
 rectLight.lookAt(0, 0, 0);
 editor.add(rectLight);
@@ -105,40 +107,74 @@ const rimLight = new THREE.DirectionalLight(0xdf7717, 3.0);
 rimLight.position.set(-6, 3, -8);
 editor.add(rimLight);
 
-const backLight = new THREE.RectAreaLight(0xbabfb4, 15, 10, 2);
+const backLight = new THREE.RectAreaLight(0xbabfb4, 15, 5, 5);
 backLight.position.set(-5, 6, 3);
 backLight.lookAt(0, 0, 0);
 editor.add(backLight);
 
-const bodyMaterial = new THREE.MeshStandardMaterial({
-  color: 0xffffff,
+const sunLight = new THREE.DirectionalLight(0xffb53d, 1.0);
+sunLight.position.set(5, 10, 20);
+sunLight.target.position.set(0, 0, 0);
+sunLight.castShadow = true;
+
+editor.add(sunLight);
+const baseMaterial = new THREE.MeshStandardMaterial({
+  color: 0x43434a,
+  roughness: 0.3,
+  metalness: 0.6,
+});
+
+const baseLightMaterial = new THREE.MeshStandardMaterial({
+  color: 0x5d5d66,
   roughness: 0.12,
   metalness: 0.6,
 });
 
-const loader = new OBJLoader();
-loader.load(
-  "AssetsNFonts/Body/Cylindrical.obj",
-  (object) => {
-    object.traverse((child) => {
-      if (child.isMesh) {
-        child.material = bodyMaterial;
-      }
-    });
-    object.scale.set(1, 1, 1);
-    object.position.set(0, 0, 0);
-    editor.add(object);
-  },
-  undefined,
-  (error) => {
-    console.error("objfailed lol:", error);
-  },
-);
+const accentMaterial = new THREE.MeshStandardMaterial({
+  color: 0x8a2415,
+  metalness: 0.3,
+  roughness: 0.2,
+});
 
 camera.position.z = 20;
 camera.position.y = 5;
 camera.lookAt(0, 2, 0);
 targetRotY = Math.PI / 5.4;
+
+function loadMesh(path, position = new THREE.Vector3(0, 0, 0)) {
+  const loader = new OBJLoader();
+  loader.load(
+    path,
+    (object) => {
+      object.traverse((child) => {
+        if (child.isMesh) {
+          if (child.name.includes("Light")) {
+            child.material = baseLightMaterial;
+          } else if (child.name.includes("Base")) {
+            child.material = baseMaterial;
+          } else if (child.name.includes("Accent")) {
+            child.material = accentMaterial;
+          }
+        }
+      });
+
+      object.scale.set(1, 1, 1);
+      object.position.copy(position);
+      editor.add(object);
+    },
+    undefined,
+    (error) => {
+      console.error("objfailed lol:", error);
+    },
+  );
+}
+
+loadMesh("AssetsNFonts/Body/Cylindrical.obj", new THREE.Vector3(0, 0, 1));
+loadMesh("AssetsNFonts/Cab.obj", new THREE.Vector3(0, 1.8, -3));
+loadMesh(
+  "AssetsNFonts/SmokeStackers/Default.obj",
+  new THREE.Vector3(0, 1.8, 3.6),
+);
 
 function animate() {
   if (isMouseDown) {
