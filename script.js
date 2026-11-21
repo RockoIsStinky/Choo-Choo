@@ -10,6 +10,7 @@ import { RectAreaLightHelper } from "three/addons/helpers/RectAreaLightHelper.js
 import { ThreeMFLoader } from "three/examples/jsm/Addons.js";
 
 import { bayerdither } from "./bayerdither";
+import { emissive } from "three/tsl";
 let isMouseDown = false;
 let isDragging = false;
 
@@ -32,7 +33,14 @@ const pxWidth = 400;
 const pxHeight = 300;
 const aspect = pxWidth / pxHeight;
 
-let size = 5;
+let size = 6;
+
+const wheelZ = 0;
+const wheelY = 0.1;
+const wheelOffsetZ = 2.2;
+const wheelOffsetX = 2.2;
+const wheelScale = 1.05;
+const smollWheelScale = 0.8;
 
 const editor = new THREE.Scene();
 const camPiv = new THREE.Object3D();
@@ -56,7 +64,7 @@ composer.setSize(pxWidth, pxHeight);
 const renderPass = new RenderPass(editor, camera);
 composer.addPass(renderPass);
 const gtaoPass = new GTAOPass(editor, camera, pxWidth, pxHeight);
-gtaoPass.blendIntensity = 0.45;
+gtaoPass.blendIntensity = 1.2;
 
 gtaoPass.updateGtaoMaterial({
   radius: 2.5,
@@ -85,7 +93,7 @@ composer.addPass(bloomity);
 
 const outputPass = new OutputPass();
 composer.addPass(outputPass);
-composer.addPass(bayerdither(pxWidth, pxHeight, 1, 1.0, 5.0));
+composer.addPass(bayerdither(pxWidth, pxHeight, 1, 1.0, 7.0));
 
 camPiv.add(camera);
 
@@ -98,7 +106,7 @@ document.body.appendChild(renderer.domElement);
 const ambientLight = new THREE.AmbientLight(0x9a9e85, 1.4);
 editor.add(ambientLight);
 
-const rectLight = new THREE.RectAreaLight(0xb2c797, 30, 5, 5);
+const rectLight = new THREE.RectAreaLight(0xb2c797, 60, 5, 5);
 rectLight.position.set(5, 10, -5);
 rectLight.lookAt(0, 0, 0);
 editor.add(rectLight);
@@ -113,9 +121,13 @@ backLight.lookAt(0, 0, 0);
 editor.add(backLight);
 
 const sunLight = new THREE.DirectionalLight(0xffb53d, 1.0);
-sunLight.position.set(5, 10, 20);
+sunLight.position.set(5, 10, -20);
 sunLight.target.position.set(0, 0, 0);
 sunLight.castShadow = true;
+
+const centerStripeLight = new THREE.DirectionalLight(0xffb53d, 2.5);
+centerStripeLight.position.set(10, 4, 12);
+editor.add(centerStripeLight);
 
 editor.add(sunLight);
 const baseMaterial = new THREE.MeshStandardMaterial({
@@ -136,12 +148,30 @@ const accentMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.2,
 });
 
+const windowMaterial = new THREE.MeshStandardMaterial({
+  color: 0xc49851,
+  roughness: 0.1,
+});
+
+const wheelMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffffff,
+});
+
+const lightMaterial = new THREE.MeshStandardMaterial({
+  emissive: 0xffea00,
+  emissiveIntensity: 30,
+});
+
 camera.position.z = 20;
 camera.position.y = 5;
 camera.lookAt(0, 2, 0);
 targetRotY = Math.PI / 5.4;
 
-function loadMesh(path, position = new THREE.Vector3(0, 0, 0)) {
+function loadMesh(
+  path,
+  position = new THREE.Vector3(0, 0, 0),
+  newScale = new THREE.Vector3(1, 1, 1),
+) {
   const loader = new OBJLoader();
   loader.load(
     path,
@@ -152,13 +182,24 @@ function loadMesh(path, position = new THREE.Vector3(0, 0, 0)) {
             child.material = baseLightMaterial;
           } else if (child.name.includes("Base")) {
             child.material = baseMaterial;
-          } else if (child.name.includes("Accent")) {
+          }
+          if (child.name.includes("Accent")) {
             child.material = accentMaterial;
+          }
+          if (child.name.includes("Window")) {
+            child.material = windowMaterial;
+          }
+          if (child.name.includes("WheelIn")) {
+            child.material = wheelMaterial;
+          }
+          if (child.name.includes("Glow")) {
+            console.log("found glow");
+            child.material = lightMaterial;
           }
         }
       });
 
-      object.scale.set(1, 1, 1);
+      object.scale.copy(newScale);
       object.position.copy(position);
       editor.add(object);
     },
@@ -170,11 +211,43 @@ function loadMesh(path, position = new THREE.Vector3(0, 0, 0)) {
 }
 
 loadMesh("AssetsNFonts/Body/Cylindrical.obj", new THREE.Vector3(0, 0, 1));
-loadMesh("AssetsNFonts/Cab.obj", new THREE.Vector3(0, 1.8, -3));
+
 loadMesh(
   "AssetsNFonts/SmokeStackers/Default.obj",
   new THREE.Vector3(0, 1.8, 3.6),
 );
+
+loadMesh(
+  "AssetsNFonts/Headlights/SingleCircular.obj",
+  new THREE.Vector3(0, 1, 5),
+);
+
+const countX = 2;
+const countZ = 3;
+
+for (let z = 0; z < countZ; z++) {
+  for (let x = 0; x < countX; x++) {
+    const posX = (x - (countX - 1) / 2) * wheelOffsetX;
+    const posZ = wheelZ + (z - (countZ - 1) / 2) * wheelOffsetZ;
+
+    loadMesh(
+      "AssetsNFonts/NormalWheel.obj",
+      new THREE.Vector3(posX, wheelY, posZ),
+      new THREE.Vector3(wheelScale, wheelScale, wheelScale),
+    );
+  }
+}
+
+for (let x = 0; x < countX; x++) {
+  const posX = (x - (countX - 1) / 2) * wheelOffsetX;
+  const posZ = wheelZ + countZ + 1.2;
+
+  loadMesh(
+    "AssetsNFonts/NormalWheel.obj",
+    new THREE.Vector3(posX, wheelY - (wheelScale - smollWheelScale) / 2, posZ),
+    new THREE.Vector3(wheelScale, smollWheelScale, smollWheelScale),
+  );
+}
 
 function animate() {
   if (isMouseDown) {
